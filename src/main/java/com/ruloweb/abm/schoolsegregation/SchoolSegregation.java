@@ -223,9 +223,11 @@ public class SchoolSegregation extends SimState {
             if (!household.isHappy(this)) {
                 School oldSchool = household.getSchool();
                 School newSchool = findNewSchool(household);
-                oldSchool.withdraw(household);
-                newSchool.enroll(household);
-                household.setSchool(newSchool);
+                if (newSchool != null) {
+                    oldSchool.withdraw(household);
+                    newSchool.enroll(household);
+                    household.setSchool(newSchool);
+                }
             }
         }
     }
@@ -248,6 +250,10 @@ public class SchoolSegregation extends SimState {
                 sortedByEthPrefSchools.put(ethnicPreference, school);
                 j++;
             }
+        }
+
+        if (sortedByEthPrefSchools.isEmpty()) {
+            return null;
         }
 
         return sortedByEthPrefSchools.firstEntry().getValue();
