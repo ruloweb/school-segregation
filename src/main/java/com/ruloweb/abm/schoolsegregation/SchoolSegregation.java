@@ -10,6 +10,7 @@ import sim.engine.Steppable;
 import sim.field.continuous.Continuous2D;
 import sim.util.Double2D;
 
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.TreeMap;
@@ -232,7 +233,7 @@ public class SchoolSegregation extends SimState {
     private School findNewSchool(Household household) {
         // TODO: replace the TreeMap for a linear algorithm.
         TreeMap<Double, School> sortedByDistSchools = household.getSortedSchools();
-        TreeMap<Double, School> sortedByEthPrefSchools = new TreeMap<>();
+        TreeMap<Double, School> sortedByEthPrefSchools = new TreeMap<>(Collections.reverseOrder());
         int max = (int)(this.schools.size() * this.getSearchRadiusPerc());
         int j = 0;
 
@@ -249,7 +250,7 @@ public class SchoolSegregation extends SimState {
             }
         }
 
-        return sortedByEthPrefSchools.lastEntry().getValue();
+        return sortedByEthPrefSchools.firstEntry().getValue();
     }
 
     private void removeHouseholders() {
