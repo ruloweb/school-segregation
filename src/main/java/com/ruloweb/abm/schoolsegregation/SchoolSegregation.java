@@ -239,10 +239,6 @@ public class SchoolSegregation extends SimState {
         int max = (int)(this.schools.size() * this.getSearchRadiusPerc());
         int j = 0;
 
-        if (max == 0) {
-            max = 1;
-        }
-
         for (Iterator<School> i = sortedByDistSchools.values().iterator(); i.hasNext() && j < max;) {
             School school = i.next();
             if (!school.isFull()) {
