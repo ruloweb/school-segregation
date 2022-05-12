@@ -34,7 +34,6 @@ public class SchoolSegregation extends SimState {
     double M = 0.8;
     double searchRadiusPerc = 1.0;
     boolean schoolEnrollmentByLottery = false;
-    int couldntMove;
 
     public int getNumHouseholders() {
         return numHouseholders;
@@ -140,18 +139,6 @@ public class SchoolSegregation extends SimState {
         this.schoolEnrollmentByLottery = schoolEnrollmentByLottery;
     }
 
-    public int getCouldntMove() {
-        return couldntMove;
-    }
-
-    public void couldntMovePlusOne() {
-        couldntMove++;
-    }
-
-    public void resetCouldntMove() {
-        couldntMove = 0;
-    }
-
     public double getDissimilarityIndex() {
         double redTotal = 0;
         double blueTotal = 0;
@@ -167,6 +154,18 @@ public class SchoolSegregation extends SimState {
         }
 
         return 0.5 * dissimilarityIndex;
+    }
+
+    public int getDidntMoveCount() {
+        int n = 0;
+
+        for (Household household: this.households) {
+            if (!household.hasMoved()) {
+                n++;
+            }
+        }
+
+        return n;
     }
 
     public SchoolSegregation(long seed) {
@@ -200,6 +199,8 @@ public class SchoolSegregation extends SimState {
                     )
             );
         }
+
+        Collections.shuffle(schools);
 
         this.schedule.scheduleRepeating((Steppable) this::step);
     }
@@ -253,12 +254,7 @@ public class SchoolSegregation extends SimState {
 
     private void moveUnhappyHouseholders() {
         if (this.getSchoolEnrollmentByLottery()) {
-            for (Household household: this.households) {
-                if (!household.isHappy(this)) {
-                    enrollToSchools(household);
-                }
-            }
-            runLottery();
+            addToEnrollmentList();
             enrollStudentsFromEnrollmentList();
         }
         else {
@@ -267,12 +263,11 @@ public class SchoolSegregation extends SimState {
                     School oldSchool = household.getSchool();
                     School newSchool = findNewSchool(household);
                     if (newSchool != null) {
+                        // TODO: this could be a householder function
                         oldSchool.withdraw(household);
                         newSchool.enroll(household);
                         household.setSchool(newSchool);
-                    }
-                    else {
-                        couldntMovePlusOne();
+                        household.setAsMoved();
                     }
                 }
             }
@@ -297,35 +292,21 @@ public class SchoolSegregation extends SimState {
         return newSchool;
     }
 
-    private void enrollToSchools(Household household) {
-        for (School school: household.getSortedByEthPrefSchools().values()) {
-            school.addToEnrollmentList(household);
-        }
-    }
-
-    public void runLottery() {
-        for (School school: this.schools) {
-            school.runLottery();
+    private void addToEnrollmentList() {
+        for (Household household: this.households) {
+            if (!household.isHappy(this)) {
+                int i = 0;
+                for (School school: household.getSortedByEthPrefSchools().values()) {
+                    school.addToEnrollmentList(i++, household);
+                }
+            }
         }
     }
 
     public void enrollStudentsFromEnrollmentList() {
-        for (Household household: this.households) {
-            if (!household.isHappy(this)) {
-                boolean moved = false;
-                for (School school: household.getSortedByEthPrefSchools().values()) {
-                    if (school.isInLotteryResult(household)) {
-                        household.getSchool().withdraw(household);
-                        school.enroll(household);
-                        household.setSchool(school);
-                        moved = true;
-                        break;
-                    }
-                }
-                if (!moved) {
-                    couldntMovePlusOne();
-                }
-
+        for (int i = 0; i < this.schools.size(); i++) {
+            for (School school: this.schools) {
+                school.enrollStudents(i);
             }
         }
     }
@@ -342,7 +323,6 @@ public class SchoolSegregation extends SimState {
     }
 
     private void step(SimState state) {
-        resetCouldntMove();
         removeHouseholders();
         createHouseholders();
         enroll();

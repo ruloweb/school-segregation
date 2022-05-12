@@ -15,6 +15,7 @@ public class Household implements Steppable {
     private School school;
     private final TreeMap<Double, School> schools = new TreeMap<>();
     private final TreeMap<Double, School> sortedByEthPrefSchools = new TreeMap<>(Collections.reverseOrder());
+    private boolean moved = false;
 
     public School getSchool() {
         return school;
@@ -30,6 +31,14 @@ public class Household implements Steppable {
 
     public TreeMap<Double, School> getSortedByEthPrefSchools() {
         return sortedByEthPrefSchools;
+    }
+
+    public boolean hasMoved() {
+        return moved;
+    }
+
+    public void setAsMoved() {
+        moved = true;
     }
 
     public Household(HouseholdType type) {

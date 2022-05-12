@@ -3,9 +3,7 @@ package com.ruloweb.abm.schoolsegregation.agent;
 import sim.engine.SimState;
 import sim.engine.Steppable;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.*;
 
 public class School implements Steppable {
     int id;
@@ -16,8 +14,7 @@ public class School implements Steppable {
     long red;
     long blue;
     long capacity;
-    final LinkedList<Household> enrollmentList = new LinkedList<>();
-    final HashSet<Household> lotteryResult = new HashSet<>();
+    final HashMap<Integer, LinkedList<Household>> enrollmentList = new HashMap<>();
 
     public School(int id) {
         this.id = id;
@@ -73,28 +70,35 @@ public class School implements Steppable {
         setCurrentToPrevious();
         total = red = blue = 0;
         enrollmentList.clear();
-        lotteryResult.clear();
     }
 
-    public void addToEnrollmentList(Household household) {
-        this.enrollmentList.add(household);
-    }
-
-    public void runLottery() {
-        // TODO: it should use the random object from the SchoolSegregation object
-        Collections.shuffle(enrollmentList);
-        int i = 0, total = (int)(this.capacity - this.total);
-
-        for (Household household: enrollmentList) {
-            if (i >= total) {
-                break;
-            }
-            lotteryResult.add(household);
+    public void addToEnrollmentList(int pos, Household household) {
+        if (!this.enrollmentList.containsKey(pos)) {
+            this.enrollmentList.put(pos, new LinkedList<>());
         }
+        this.enrollmentList.get(pos).add(household);
     }
 
-    public boolean isInLotteryResult(Household household) {
-        return lotteryResult.contains(household);
+    public void enrollStudents(int pos) {
+        // TODO: it should use the random object from the SchoolSegregation object
+        if (!this.enrollmentList.containsKey(pos)) {
+            return;
+        }
+
+        LinkedList<Household> householders = this.enrollmentList.get(pos);
+        Collections.shuffle(householders);
+        int max = (int)(this.capacity - this.total);
+        int size = householders.size();
+        List<Household> householdersSublist = householders.subList(0, Math.min(size, max));
+
+        for (Household household: householdersSublist) {
+            if (!household.hasMoved()) {
+                household.getSchool().withdraw(household);
+                this.enroll(household);
+                household.setSchool(this);
+                household.setAsMoved();
+            }
+        }
     }
 
     @Override
