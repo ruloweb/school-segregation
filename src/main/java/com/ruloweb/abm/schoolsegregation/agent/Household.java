@@ -5,6 +5,8 @@ import sim.engine.SimState;
 import sim.engine.Steppable;
 import sim.util.Double2D;
 
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.TreeMap;
 
@@ -12,6 +14,7 @@ public class Household implements Steppable {
     private final HouseholdType type;
     private School school;
     private final TreeMap<Double, School> schools = new TreeMap<>();
+    private final TreeMap<Double, School> sortedByEthPrefSchools = new TreeMap<>(Collections.reverseOrder());
 
     public School getSchool() {
         return school;
@@ -21,8 +24,12 @@ public class Household implements Steppable {
         this.school = school;
     }
 
-    public TreeMap<Double, School> getSortedSchools() {
+    public TreeMap<Double, School> getSortedByDistanceSchools() {
         return schools;
+    }
+
+    public TreeMap<Double, School> getSortedByEthPrefSchools() {
+        return sortedByEthPrefSchools;
     }
 
     public Household(HouseholdType type) {
@@ -32,10 +39,23 @@ public class Household implements Steppable {
     public void calculateSchoolsDistance(SchoolSegregation model, LinkedList<School> schoolsList) {
         Double2D householdLoc = model.fieldHouseholders.getObjectLocationAsDouble2D(this);
 
+        // Schools sorted by distance
         for (School school: schoolsList) {
             Double2D schoolLoc = model.fieldSchools.getObjectLocationAsDouble2D(school);
             double distance = Math.pow(householdLoc.x - schoolLoc.x, 2) + Math.pow(householdLoc.y - schoolLoc.y, 2);
             this.schools.put(distance, school);
+        }
+    }
+
+    public void calculateSchoolsDistanceByEthnicPreferences(SchoolSegregation model) {
+        int max = (int)(this.schools.size() * model.getSearchRadiusPerc());
+        int j = 0;
+
+        // Schools sorted by ethnic preference and limited by getSearchRadiusPerc
+        for (Iterator<School> i = this.schools.values().iterator(); i.hasNext() && j < max; j++) {
+            School school = i.next();
+            double ethnicPreference = this.ethnicPreference(school, model.getF(), model.getM());
+            this.sortedByEthPrefSchools.put(ethnicPreference, school);
         }
     }
 

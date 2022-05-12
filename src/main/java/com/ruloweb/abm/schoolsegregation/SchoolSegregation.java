@@ -11,16 +11,19 @@ import sim.field.continuous.Continuous2D;
 import sim.util.Double2D;
 
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.TreeMap;
 
 public class SchoolSegregation extends SimState {
+    // TODO: add segregation between householders
     final int WIDTH = 160;
     final int HEIGHT = 160;
     final Logger logger = LogManager.getLogger(SchoolSegregation.class);
     final LinkedList<School> schools = new LinkedList<>();
     final LinkedList<Household> households = new LinkedList<>();
+
+    public Continuous2D fieldSchools = new Continuous2D(1.0,WIDTH,HEIGHT);
+    public Continuous2D fieldHouseholders = new Continuous2D(1.0,WIDTH,HEIGHT);
 
     int numHouseholders = 6000;
     int numSchools = 25;
@@ -30,6 +33,7 @@ public class SchoolSegregation extends SimState {
     double f = 0.7;
     double M = 0.8;
     double searchRadiusPerc = 1.0;
+    boolean schoolEnrollmentByLottery = false;
 
     public int getNumHouseholders() {
         return numHouseholders;
@@ -127,8 +131,13 @@ public class SchoolSegregation extends SimState {
         return new sim.util.Interval(0, 1.0);
     }
 
-    public Continuous2D fieldSchools = new Continuous2D(1.0,WIDTH,HEIGHT);
-    public Continuous2D fieldHouseholders = new Continuous2D(1.0,WIDTH,HEIGHT);
+    public boolean getSchoolEnrollmentByLottery() {
+        return schoolEnrollmentByLottery;
+    }
+
+    public void setSchoolEnrollmentByLottery(boolean schoolEnrollmentByLottery) {
+        this.schoolEnrollmentByLottery = schoolEnrollmentByLottery;
+    }
 
     public double getDissimilarityIndex() {
         double redTotal = 0;
@@ -159,6 +168,11 @@ public class SchoolSegregation extends SimState {
         fieldHouseholders.clear();
         schools.clear();
 
+        double offsetX = fieldSchools.getWidth() / 10;
+        double offsetY = fieldSchools.getHeight() / 10;
+        double gridX = fieldSchools.getWidth() / 5;
+        double gridY = fieldSchools.getHeight() / 5;
+
         // Create schools
         for (int i = 0; i < numSchools; i++) {
             School school = new School();
@@ -168,8 +182,8 @@ public class SchoolSegregation extends SimState {
             fieldSchools.setObjectLocation(
                     school,
                     new Double2D(
-                            fieldSchools.getWidth() * random.nextDouble(),
-                            fieldSchools.getHeight() * random.nextDouble()
+                            offsetX + gridX * (i % 5),
+                            offsetY + gridY * (int)(i / 5)
                     )
             );
         }
@@ -198,7 +212,7 @@ public class SchoolSegregation extends SimState {
 
     private void enroll() {
         for (Household household: this.households) {
-            School closestSchool = household.getSortedSchools().firstEntry().getValue();
+            School closestSchool = household.getSortedByDistanceSchools().firstEntry().getValue();
             closestSchool.enroll(household);
             household.setSchool(closestSchool);
         }
@@ -218,41 +232,79 @@ public class SchoolSegregation extends SimState {
         }
     }
 
-    private void moveUnhappyHouseholders() {
+    private void calculateSchoolsEthnicPreferences() {
         for (Household household: this.households) {
-            if (!household.isHappy(this)) {
-                School oldSchool = household.getSchool();
-                School newSchool = findNewSchool(household);
-                if (newSchool != null) {
-                    oldSchool.withdraw(household);
-                    newSchool.enroll(household);
-                    household.setSchool(newSchool);
+            household.calculateSchoolsDistanceByEthnicPreferences(this);
+        }
+    }
+
+    private void moveUnhappyHouseholders() {
+        if (this.getSchoolEnrollmentByLottery()) {
+            for (Household household: this.households) {
+                if (!household.isHappy(this)) {
+                    enrollToSchools(household);
+                }
+            }
+            runLottery();
+            enrollStudentsFromEnrollmentList();
+        }
+        else {
+            for (Household household: this.households) {
+                if (!household.isHappy(this)) {
+                    School oldSchool = household.getSchool();
+                    School newSchool = findNewSchool(household);
+                    if (newSchool != null) {
+                        oldSchool.withdraw(household);
+                        newSchool.enroll(household);
+                        household.setSchool(newSchool);
+                    }
                 }
             }
         }
     }
 
     private School findNewSchool(Household household) {
-        // TODO: replace the TreeMap for a linear algorithm.
-        TreeMap<Double, School> sortedByDistSchools = household.getSortedSchools();
-        TreeMap<Double, School> sortedByEthPrefSchools = new TreeMap<>(Collections.reverseOrder());
-        int max = (int)(this.schools.size() * this.getSearchRadiusPerc());
-        int j = 0;
-
-        for (Iterator<School> i = sortedByDistSchools.values().iterator(); i.hasNext() && j < max;) {
-            School school = i.next();
-            if (!school.isFull()) {
-                double ethnicPreference = household.ethnicPreference(school, this.getF(), this.getM());
-                sortedByEthPrefSchools.put(ethnicPreference, school);
-                j++;
-            }
-        }
+        TreeMap<Double, School> sortedByEthPrefSchools = household.getSortedByEthPrefSchools();
+        School newSchool = null;
 
         if (sortedByEthPrefSchools.isEmpty()) {
             return null;
         }
 
-        return sortedByEthPrefSchools.firstEntry().getValue();
+        for (School school: sortedByEthPrefSchools.values()) {
+            if (!school.isFull()) {
+                newSchool = school;
+                break;
+            }
+        }
+
+        return newSchool;
+    }
+
+    private void enrollToSchools(Household household) {
+        TreeMap<Double, School> sortedByEthPrefSchools = household.getSortedByEthPrefSchools();
+
+        for (School school: sortedByEthPrefSchools.values()) {
+            school.addToEnrollmentList(household);
+        }
+    }
+
+    public void runLottery() {
+        for (School school: this.schools) {
+            school.runLottery();
+        }
+    }
+
+    public void enrollStudentsFromEnrollmentList() {
+        for (Household household: this.households) {
+            for (School school: household.getSortedByEthPrefSchools().values()) {
+                if (school.isInLotteryResult(household)) {
+                    household.getSchool().withdraw(household);
+                    school.enroll(household);
+                    household.setSchool(school);
+                }
+            }
+        }
     }
 
     private void removeHouseholders() {
@@ -272,6 +324,7 @@ public class SchoolSegregation extends SimState {
         enroll();
         setCurrentToPrevious();
         calculateSchoolsCapacity();
+        calculateSchoolsEthnicPreferences();
         moveUnhappyHouseholders();
         resetSchools();
     }
