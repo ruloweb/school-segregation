@@ -34,6 +34,7 @@ public class SchoolSegregation extends SimState {
     double M = 0.8;
     double searchRadiusPerc = 1.0;
     boolean schoolEnrollmentByLottery = false;
+    int couldntMove;
 
     public int getNumHouseholders() {
         return numHouseholders;
@@ -137,6 +138,18 @@ public class SchoolSegregation extends SimState {
 
     public void setSchoolEnrollmentByLottery(boolean schoolEnrollmentByLottery) {
         this.schoolEnrollmentByLottery = schoolEnrollmentByLottery;
+    }
+
+    public int getCouldntMove() {
+        return couldntMove;
+    }
+
+    public void couldntMovePlusOne() {
+        couldntMove++;
+    }
+
+    public void resetCouldntMove() {
+        couldntMove = 0;
     }
 
     public double getDissimilarityIndex() {
@@ -258,6 +271,9 @@ public class SchoolSegregation extends SimState {
                         newSchool.enroll(household);
                         household.setSchool(newSchool);
                     }
+                    else {
+                        couldntMovePlusOne();
+                    }
                 }
             }
         }
@@ -282,9 +298,7 @@ public class SchoolSegregation extends SimState {
     }
 
     private void enrollToSchools(Household household) {
-        TreeMap<Double, School> sortedByEthPrefSchools = household.getSortedByEthPrefSchools();
-
-        for (School school: sortedByEthPrefSchools.values()) {
+        for (School school: household.getSortedByEthPrefSchools().values()) {
             school.addToEnrollmentList(household);
         }
     }
@@ -297,12 +311,21 @@ public class SchoolSegregation extends SimState {
 
     public void enrollStudentsFromEnrollmentList() {
         for (Household household: this.households) {
-            for (School school: household.getSortedByEthPrefSchools().values()) {
-                if (school.isInLotteryResult(household)) {
-                    household.getSchool().withdraw(household);
-                    school.enroll(household);
-                    household.setSchool(school);
+            if (!household.isHappy(this)) {
+                boolean moved = false;
+                for (School school: household.getSortedByEthPrefSchools().values()) {
+                    if (school.isInLotteryResult(household)) {
+                        household.getSchool().withdraw(household);
+                        school.enroll(household);
+                        household.setSchool(school);
+                        moved = true;
+                        break;
+                    }
                 }
+                if (!moved) {
+                    couldntMovePlusOne();
+                }
+
             }
         }
     }
@@ -319,6 +342,7 @@ public class SchoolSegregation extends SimState {
     }
 
     private void step(SimState state) {
+        resetCouldntMove();
         removeHouseholders();
         createHouseholders();
         enroll();
