@@ -175,7 +175,7 @@ public class SchoolSegregation extends SimState {
 
         // Create schools
         for (int i = 0; i < numSchools; i++) {
-            School school = new School();
+            School school = new School(i);
 
             schools.add(school);
 

@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 
 public class School implements Steppable {
+    int id;
     long prevTotal;
     long prevRed;
     long prevBlue;
@@ -17,6 +18,10 @@ public class School implements Steppable {
     long capacity;
     final LinkedList<Household> enrollmentList = new LinkedList<>();
     final HashSet<Household> lotteryResult = new HashSet<>();
+
+    public School(int id) {
+        this.id = id;
+    }
 
     public long getTotal() {
         return prevTotal;
@@ -94,4 +99,9 @@ public class School implements Steppable {
 
     @Override
     public void step(SimState simState) {}
+
+    @Override
+    public String toString() {
+        return "School " + this.id;
+    }
 }

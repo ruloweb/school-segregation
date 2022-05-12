@@ -10,6 +10,8 @@ import sim.display.GUIState;
 import sim.engine.SimState;
 import sim.portrayal.DrawInfo2D;
 import sim.portrayal.continuous.ContinuousPortrayal2D;
+import sim.portrayal.simple.CircledPortrayal2D;
+import sim.portrayal.simple.LabelledPortrayal2D;
 import sim.portrayal.simple.OvalPortrayal2D;
 import sim.portrayal.simple.ShapePortrayal2D;
 
@@ -53,33 +55,39 @@ public class SchoolSegregationUI extends GUIState {
         schoolsPortrayal.setField(model.fieldSchools);
         schoolsPortrayal.setPortrayalForClass(
                 School.class,
-                new ShapePortrayal2D(ShapePortrayal2D.X_POINTS_TRIANGLE_UP, ShapePortrayal2D.Y_POINTS_TRIANGLE_UP, 5.0, true) {
-                    @Override
-                    public void draw(Object object, Graphics2D graphics, DrawInfo2D info) {
-                        School school = (School)object;
+                new CircledPortrayal2D(
+                    new LabelledPortrayal2D(
+                        new ShapePortrayal2D(ShapePortrayal2D.X_POINTS_TRIANGLE_UP, ShapePortrayal2D.Y_POINTS_TRIANGLE_UP, 5.0, true) {
+                            @Override
+                            public void draw(Object object, Graphics2D graphics, DrawInfo2D info) {
+                                School school = (School)object;
 
-                        if (school.getTotal() == 0) {
-                            paint = Color.BLACK;
-                        }
-                        else {
-                            int red = (int)(255 * school.getRed() / school.getTotal());
-                            int blue = (int)(255 * school.getBlue() / school.getTotal());
-                            paint = new Color(red, 0, blue);
-                        }
+                                if (school.getTotal() == 0) {
+                                    paint = Color.BLACK;
+                                }
+                                else {
+                                    int red = (int)(255 * school.getRed() / school.getTotal());
+                                    int blue = (int)(255 * school.getBlue() / school.getTotal());
+                                    paint = new Color(red, 0, blue);
+                                }
 
-                        super.draw(object, graphics, info);
-                    }
-                }
+                                super.draw(object, graphics, info);
+                            }
+                        }, -25, 25 , 0, 0, new Font("SansSerif", Font.BOLD, 10), 1, null, Color.BLACK, false
+                    ), 0, 5, Color.GREEN, true
+                )
         );
         householdersPortrayal.setField(model.fieldHouseholders);
-        householdersPortrayal.setPortrayalForClass(Household.class, new OvalPortrayal2D() {
-            @Override
-            public void draw(Object object, Graphics2D graphics, DrawInfo2D info) {
-                Household household = (Household)object;
-                paint = household.getType() == HouseholdType.RED ? new Color(0xFF5555) : new Color(0x5555FF);
-                super.draw(object, graphics, info);
-            }
-        });
+        householdersPortrayal.setPortrayalForClass(Household.class, new CircledPortrayal2D(
+                new OvalPortrayal2D() {
+                    @Override
+                    public void draw(Object object, Graphics2D graphics, DrawInfo2D info) {
+                        Household household = (Household)object;
+                        paint = household.getType() == HouseholdType.RED ? new Color(0xFF5555) : new Color(0x5555FF);
+                        super.draw(object, graphics, info);
+                    }
+                }, Color.GREEN, true)
+        );
 
         // reschedule the displayer
         display.reset();
