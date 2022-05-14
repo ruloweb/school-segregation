@@ -2,10 +2,10 @@
 model = com.ruloweb.abm.schoolsegregation.SchoolSegregation
 
 ## Variables
-independent = PercRed SearchRadiusPerc
-min = 0.2 1.0
-max = 0.4 1.0
-divisions = 3 1
+independent = PercRed SearchRadiusPerc SchoolEnrollmentByLottery
+min = 0.2 1.0 0
+max = 0.4 1.0 0
+divisions = 3 1 1
 dependent = DissimilarityIndex
 
 ## Sweep Parameters
@@ -13,6 +13,5 @@ trials = 100
 threads = 12
 steps = 25
 mod = 1
-seed = 1745258451
+seed = 1745258453
 compress = false
-out = simple_experiment_rad_10.csv
